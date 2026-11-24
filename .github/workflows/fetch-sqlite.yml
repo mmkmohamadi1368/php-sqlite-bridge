@@ -1,0 +1,37 @@
+
+name: Fetch PHP SQLite extension
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  download:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Prepare output directory
+        run: mkdir -p dist
+
+      - name: Download PHP 8.4 SQLite package
+        run: |
+          docker run --rm \
+            -v "$PWD/dist:/out" \
+            debian:trixie-slim \
+            bash -lc '
+              apt-get update
+              apt-get install -y ca-certificates
+              cd /out
+              apt-get download php8.4-sqlite3=8.4.24-1~deb13u1
+              dpkg-deb -f php8.4-sqlite3_8.4.24-1~deb13u1_amd64.deb Package Version Architecture Depends
+              sha256sum php8.4-sqlite3_8.4.24-1~deb13u1_amd64.deb > SHA256SUMS
+            '
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: php84-sqlite3-debian13-amd64
+          path: dist/
+          retention-days: 3
