@@ -15,32 +15,28 @@ jobs:
       - name: Prepare output directory
         run: mkdir -p dist
 
-      - name: Download available PHP 8.4 SQLite package
+      - name: Download exact PHP 8.4.24 SQLite package
         run: |
-          docker run --rm \
-            -v "$PWD/dist:/out" \
-            debian:trixie-slim \
-            bash -lc '
-              set -e
-              export DEBIAN_FRONTEND=noninteractive
-              apt-get update
-              apt-get install -y ca-certificates
-              cd /out
-              apt-get download php8.4-sqlite3
-              PKG="$(find . -maxdepth 1 -type f -name "php8.4-sqlite3_*.deb" -print -quit)"
-              test -n "$PKG"
-              echo "===== PACKAGE METADATA ====="
-              dpkg-deb -f "$PKG" Package Version Architecture Depends
-              echo "===== PHP COMMON CANDIDATE ====="
-              apt-cache policy php8.4-common
-              sha256sum "$PKG" > SHA256SUMS
-              echo "===== OUTPUT FILES ====="
-              ls -lh
-            '
+          set -euo pipefail
+          cd dist
+          PKG="php8.4-sqlite3_8.4.24-1~deb13u1_amd64.deb"
+          URL="https://mirrors.edge.kernel.org/debian/pool/main/p/php8.4/$PKG"
+          curl --fail --location --retry 3 "$URL" --output "$PKG"
+
+          echo "===== PACKAGE METADATA ====="
+          dpkg-deb -f "$PKG" Package Version Architecture Depends
+
+          test "$(dpkg-deb -f "$PKG" Package)" = "php8.4-sqlite3"
+          test "$(dpkg-deb -f "$PKG" Version)" = "8.4.24-1~deb13u1"
+          test "$(dpkg-deb -f "$PKG" Architecture)" = "amd64"
+
+          echo "===== PACKAGE SIZE ====="
+          stat -c '%n %s bytes' "$PKG"
+          sha256sum "$PKG" | tee SHA256SUMS
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
         with:
-          name: php84-sqlite3-debian13-amd64
+          name: php84-sqlite3-debian13-amd64-exact
           path: dist/
           retention-days: 3
