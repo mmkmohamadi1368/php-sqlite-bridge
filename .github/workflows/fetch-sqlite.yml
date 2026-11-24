@@ -15,18 +15,27 @@ jobs:
       - name: Prepare output directory
         run: mkdir -p dist
 
-      - name: Download PHP 8.4 SQLite package
+      - name: Download available PHP 8.4 SQLite package
         run: |
           docker run --rm \
             -v "$PWD/dist:/out" \
             debian:trixie-slim \
             bash -lc '
+              set -e
+              export DEBIAN_FRONTEND=noninteractive
               apt-get update
               apt-get install -y ca-certificates
               cd /out
-              apt-get download php8.4-sqlite3=8.4.24-1~deb13u1
-              dpkg-deb -f php8.4-sqlite3_8.4.24-1~deb13u1_amd64.deb Package Version Architecture Depends
-              sha256sum php8.4-sqlite3_8.4.24-1~deb13u1_amd64.deb > SHA256SUMS
+              apt-get download php8.4-sqlite3
+              PKG="$(find . -maxdepth 1 -type f -name "php8.4-sqlite3_*.deb" -print -quit)"
+              test -n "$PKG"
+              echo "===== PACKAGE METADATA ====="
+              dpkg-deb -f "$PKG" Package Version Architecture Depends
+              echo "===== PHP COMMON CANDIDATE ====="
+              apt-cache policy php8.4-common
+              sha256sum "$PKG" > SHA256SUMS
+              echo "===== OUTPUT FILES ====="
+              ls -lh
             '
 
       - name: Upload package artifact
